@@ -1,6 +1,9 @@
-# Coronary Vessel Segmentation using UMamba-UNet
+# Coronary Vessel Segmentation using Mamba-Inspired UNet (Mi-UNet)
 
-This repository implements a complete coronary angiography (CAG) vessel segmentation pipeline using the UMamba-UNet architecture. It includes baseline training, topology-aware clDice learning, semi-supervised pseudo-label training, 5-fold cross-validation, and evaluation with Dice, IoU, Precision, Recall, and clDice metrics.
+This repository implements a complete coronary angiography (CAG) vessel segmentation pipeline using a lightweight **Mamba-inspired UNet (Mi-UNet)** architecture.  
+The pipeline includes baseline training, topology-aware clDice learning, semi-supervised pseudo-label training, 5-fold cross-validation, and evaluation with Dice, IoU, Precision, Recall, and clDice metrics.
+
+---
 
 ## Repository Structure
 
@@ -17,12 +20,14 @@ workspace/
     └── pseudo/
 ```
 
+---
+
 ## Dataset
 
-The ARCADE coronary angiography dataset is required.  
-It is not included in this repository and must be downloaded separately.
+The ARCADE coronary angiography dataset is required for the experiments.  
+It is **not included in this repository** and must be downloaded separately.
 
-Expected folder structure:
+Expected dataset directory structure:
 
 ```
 ARCADE/
@@ -31,23 +36,62 @@ ARCADE/
 └── pseudo/
 ```
 
+---
+
+# Model Architecture: Mamba-Inspired UNet (Mi-UNet)
+
+Although the source code uses the filename `umamba_unet.py`, the actual design is a **Mamba-inspired UNet**, not a full Mamba-SSM implementation.
+
+### Key characteristics
+
+- No Mamba-SSM  
+- No Selective Scan  
+- No recurrent SSM kernels  
+- No sequence-style Mamba operations  
+
+Instead, Mi-UNet employs:
+
+- Lightweight depthwise-separable convolutions (DSConv)  
+- Gated mixing layers inspired by the Mamba architecture  
+- Efficient convolution-based feature extraction suitable for CAG segmentation  
+
+### Rationale
+
+This design preserves Mamba's *gating and mixing spirit*, while avoiding:
+
+- High VRAM usage  
+- Training instability  
+- Heavy SSM kernel dependencies  
+
+It ensures full compatibility with:
+
+- clDice topology-aware loss  
+- pseudo-label training  
+- TTA  
+- 5-fold cross-validation  
+- Existing segmentation pipelines  
+
+---
+
 ## Experiments (Milestone 4)
 
 | Experiment | Folder | Description |
 |-----------|--------|-------------|
-| Baseline | `exp_baseline/` | GT only, Dice+BCE |
-| Pseudo | `exp_A/` | Pseudo-labels + GT |
-| clDice | `exp_B/` | GT only, Dice+clDice |
+| Baseline | `exp_baseline/` | GT-only, Dice+BCE |
+| Pseudo | `exp_A/` | GT + pseudo-labels |
+| clDice | `exp_B/` | GT + Dice+clDice |
 | Mixed | `exp_AB/` | GT + pseudo + clDice |
 | Final | `exp_ABC/` | Mixed + TTA |
 
+---
+
 ## Training Example
 
-```bash
+```
 python train_umamba.py     --experiment baseline     --data_root ARCADE     --out_dir exp_baseline
 ```
 
-Available modes:
+Available experiment modes:
 
 ```
 baseline
@@ -57,54 +101,64 @@ pseudo_cldice
 final
 ```
 
+---
+
 ## Evaluation Example
 
-```bash
+```
 python evaluate.py     --ckpt exp_ABC/fold4_best.pth     --img_dir ARCADE/images     --gt_dir ARCADE/masks     --save_dir eval_ABC     --experiment final
 ```
 
-Outputs:
+Outputs include:
 
-- Dice, IoU, Precision, Recall  
+- Dice  
+- IoU  
+- Precision  
+- Recall  
 - clDice  
 - Predicted masks  
 
+---
+
 ## Loss Functions
 
-Implemented in `losses_cldice.py`:
+Defined in `losses_cldice.py`:
 
-- Dice + BCE  
-- Dice + clDice  
-- Mixed loss  
+- Dice + BCE loss  
+- Dice + clDice loss  
+- Mixed loss variants  
 
-## Model Architecture
+clDice enhances the continuity of thin vessel structures, improving segmentation topology.
 
-UMamba-UNet includes:
+---
 
-- UNet encoder–decoder  
-- Mamba-style lightweight blocks  
-- Depthwise separable convolutions  
-- Skip connections  
+## Test-Time Augmentation (TTA)
 
-Attention modules are disabled.
+The final experiment applies:
 
-## TTA (Test-Time Augmentation)
+- Small-angle rotations  
+- Horizontal flips  
 
-Small-angle rotations and flips are used for stable predictions.
+TTA stabilizes predictions in challenging low-contrast coronary angiography images.
+
+---
 
 ## File Descriptions
 
 | File | Description |
 |------|-------------|
-| train_umamba.py | Training pipeline |
-| evaluate.py | Evaluation with TTA and clDice |
-| losses_cldice.py | Loss functions including clDice |
-| umamba_unet.py | UMamba-UNet model |
-| command.sh | Example script |
-| Dockerfile | Environment setup |
+| `train_umamba.py` | Training script for all experiment modes |
+| `evaluate.py` | Evaluation script with clDice and TTA |
+| `losses_cldice.py` | Loss functions including Dice, BCE, clDice |
+| `umamba_unet.py` | Implementation of the Mamba-inspired UNet (Mi-UNet) |
+| `command.sh` | Example script for running experiment pipelines |
+| `Dockerfile` | Optional environment configuration |
+
+---
 
 ## Notes
 
-- ARCADE dataset cannot be redistributed; download from official source.
-- All experiments follow Milestone 4 requirements.
-- This repository provides training, evaluation, and model code only.
+- The ARCADE dataset must be downloaded from its official source and **cannot be redistributed**.
+- This repository contains the full training and evaluation pipeline for Milestone 4.
+- Mi-UNet is a **Mamba-inspired lightweight architecture**, not a full SSM-based Mamba model.
+
